@@ -27,6 +27,7 @@ cloudasset_enable = projects.Service(
 
 dd_gcp.DataDogGCPIntegration(
     'datadog-gcp-integration',
+    enable_log_sink=True,
     opts=ResourceOptions(depends_on=[monitoring_enable, cloudasset_enable]))
 ```
 
