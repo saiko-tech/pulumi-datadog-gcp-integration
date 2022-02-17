@@ -4,6 +4,7 @@ from pulumi.output import Output
 from pulumi.resource import ComponentResource, ResourceOptions
 import pulumi_gcp as gcp
 import pulumi_datadog as datadog
+import pulumi_random
 
 class GCPLogSinkToDataDog(ComponentResource):
     def __init__(
@@ -65,9 +66,15 @@ class DataDogGCPIntegration(ComponentResource):
             opts: ResourceOptions = None):
         super().__init__('datadog_gcp_integration:index:DataDogGCPIntegration', name, None, opts)
 
+        suffix = pulumi_random.RandomString(
+            f'{name}-gcp-sa-suffix',
+            length=3,
+            min_lower=3,
+            opts=ResourceOptions(parent=self))
+
         gcp_sa = gcp.serviceaccount.Account(
-            'gcp-sa',
-            account_id='datadog-integration',
+            f'{name}-gcp-sa',
+            account_id=Output.concat('datadog-integration-', suffix.result),
             description='DataDog GCP Integration SA',
             opts=ResourceOptions(parent=self))
 
@@ -78,30 +85,34 @@ class DataDogGCPIntegration(ComponentResource):
             'roles/monitoring.viewer',
         ]
 
+        iam_members = []
+
         for role in roles:
-            gcp.projects.IAMMember(
-                f'gcp-sa-role-{role}',
+            member = gcp.projects.IAMMember(
+                f'{name}-gcp-sa-role-{role}',
                 role=role,
                 member=gcp_sa.email.apply(lambda email: f'serviceAccount:{email}'),
                 opts=ResourceOptions(parent=self))
 
+            iam_members.append(member)
+
         gcp_sa_key = gcp.serviceaccount.Key(
-            'gcp-sa-key',
+            f'{name}-gcp-sa-key',
             service_account_id=gcp_sa.name,
             opts=ResourceOptions(parent=self))
 
         gcp_sa_pk = gcp_sa_key.private_key.apply(lambda k: json.loads(base64.b64decode(k)))
 
         gcp_integration = datadog.gcp.Integration(
-            'datadog-gcp-integration',
+            f'{name}-datadog-gcp-integration',
             client_email=gcp_sa_pk.apply(lambda k: k['client_email']),
             client_id=gcp_sa_pk.apply(lambda k: k['client_id']),
             private_key=gcp_sa_pk.apply(lambda k: k['private_key']),
             private_key_id=gcp_sa_pk.apply(lambda k: k['private_key_id']),
             project_id=gcp_sa_pk.apply(lambda k: k['project_id']),
-            opts=ResourceOptions(parent=self))
+            opts=ResourceOptions(parent=self, depends_on=iam_members))
 
         if enable_log_sink:
             GCPLogSinkToDataDog(
-                'export-gcp-logs-to-datadog',
+                f'{name}-export-gcp-logs-to-datadog',
                 opts=ResourceOptions(parent=self, depends_on=[gcp_integration]))
