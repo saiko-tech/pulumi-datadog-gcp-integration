@@ -7,7 +7,7 @@ Set up the [DataDog GCP Integration + Log Sink](https://docs.datadoghq.com/integ
 1. Add the following to your Pulumi project's `requirements.txt`:
 
 ```
-git+https://github.com/saiko-tech/pulumi-datadog-gcp-integration@08b6caa905cd99a23e7e3366d5818fc926635291#egg=pulumi-datadog-gcp-integration
+git+https://github.com/saiko-tech/pulumi-datadog-gcp-integration@cd8296f0e8773d99c534d41f9c7240ba77c09efe#egg=pulumi-datadog-gcp-integration
 ```
 
 **NOTE: make sure to use an explicit Git SHA like in the above example isstead of `@master` etc. - always do this when linking against dependencies via Git or you will become the victim of a supply chain attack!**
